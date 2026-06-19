@@ -1,0 +1,43 @@
+### index
+GET http://localhost:8080/api/products?page=1&per_page=1
+Accept: application/json
+Authorization: Bearer 1358855543
+
+### show
+GET http://localhost:8080/api/products/1
+Authorization: Bearer 1358855543
+
+### create
+POST http://localhost:8080/api/products
+Authorization: Bearer 1358855543
+Content-Type: application/json
+
+{
+  "nama": "Yoga Slim 7i Aura Edition",
+  "harga": 15000000,
+  "jumlah": 10
+}
+
+### update all field
+PUT http://localhost:8080/api/products/4
+Authorization: Bearer 1358855543
+Content-Type: application/json
+
+{
+  "nama": "Yoga Slim 7i Aura Editions",
+  "harga": 25000000,
+  "jumlah": 20
+}
+
+### update some field
+PATCH http://localhost:8080/api/products/4
+Authorization: Bearer 1358855543
+Content-Type: application/json
+
+{ 
+  "jumlah": 25
+}
+
+### delete
+DELETE http://localhost:8080/api/products/4
+Authorization: Bearer 1358855543
