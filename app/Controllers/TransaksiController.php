@@ -16,7 +16,7 @@ class TransaksiController extends BaseController
 
     public function __construct()
     {
-        helper(['number', 'form']);
+        helper(['number', 'form', 'transaksi']);
         $this->cart = service('cart');
         $this->transactionModel = new TransactionModel();
         $this->transactionDetailModel = new TransactionDetailModel();
@@ -100,11 +100,11 @@ class TransaksiController extends BaseController
 
     public function checkout()
     {
-       
+
         $data = [
-            'items' => $this->cart->contents(),
-            'total' => $this->cart->total()
-            
+            'items'      => $this->cart->contents(),
+            'total'      => $this->cart->total(),
+            'kuponList'  => get_kupon_list()
         ];
 
         return view('v_checkout', $data);
@@ -181,12 +181,27 @@ class TransaksiController extends BaseController
 
         $ongkir = (int) $this->request->getPost('ongkir');
 
+        // ambil kode kupon dari form input
+        $kuponCode = trim((string) $this->request->getPost('kupon_code'));
+        $kuponCode = $kuponCode !== '' ? strtoupper($kuponCode) : null;
+
+        // hitung semua komponen tambahan
+        $ppn         = hitung_ppn($subtotal);
+        $biayaAdmin  = hitung_biaya_admin($subtotal);
+        $diskonKupon = hitung_diskon_kupon($subtotal, $kuponCode);
+
+        $totalHarga = $subtotal - $diskonKupon + $ppn + $biayaAdmin + $ongkir;
+
         $transaction = [
-            'username' => $this->request->getPost('username'),
-            'alamat' => $this->request->getPost('alamat'),
-            'ongkir' => $ongkir,
-            'total_harga' => $subtotal + $ongkir,
-            'status' => 0,
+            'username'     => $this->request->getPost('username'),
+            'alamat'       => $this->request->getPost('alamat'),
+            'ongkir'       => $ongkir,
+            'ppn'          => $ppn,
+            'biaya_admin'  => $biayaAdmin,
+            'kupon_code'   => $kuponCode,
+            'diskon_kupon' => $diskonKupon,
+            'total_harga'  => $totalHarga,
+            'status'       => 0,
         ];
 
         // insert transaction

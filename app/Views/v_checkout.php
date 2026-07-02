@@ -44,6 +44,17 @@
                 'readonly' => true]) ?>
         </div>
         <div class="col-12">
+            <?= form_label('Kode Kupon', 'kupon_code', ['class' => 'form-label']) ?>
+            <?= form_input([
+                'name'  => 'kupon_code',
+                'id'    => 'kupon_code',
+                'class' => 'form-control',
+                'placeholder' => 'Masukkan kode kupon (opsional)']) ?>
+            <small class="text-muted">
+                Tersedia: <?= implode(', ', array_keys($kuponList)) ?>
+            </small>
+        </div>
+        <div class="col-12">
             <?= form_submit(
                 'submit',
                 'Buat Pesanan',
@@ -84,7 +95,27 @@
             </tr>
             <tr>
                 <td colspan="2"></td>
-                <td>Total</td>
+                <td>Diskon Kupon <span id="kupon_persen"></span></td>
+                <td class="text-danger">-<span id="diskon_kupon_text"><?= number_to_currency(0, 'IDR') ?></span></td>
+            </tr>
+            <tr>
+                <td colspan="2"></td>
+                <td>PPN (12%)</td>
+                <td><span id="ppn_text"><?= number_to_currency(0, 'IDR') ?></span></td>
+            </tr>
+            <tr>
+                <td colspan="2"></td>
+                <td>Biaya Admin</td>
+                <td><span id="biaya_admin_text"><?= number_to_currency(0, 'IDR') ?></span></td>
+            </tr>
+            <tr>
+                <td colspan="2"></td>
+                <td>Subtotal (+PPN+Admin-Kupon)</td>
+                <td><span id="subtotal_akhir_text"><?= number_to_currency($total, 'IDR') ?></span></td>
+            </tr>
+            <tr>
+                <td colspan="2"></td>
+                <td>Grand Total (incl. Ongkir)</td>
                 <td><span id="total"><?= number_to_currency($total, 'IDR') ?></span></td>
             </tr>
         </tbody>
@@ -98,15 +129,58 @@
     $(document).ready(function () {
         let ongkir = 0;
         let subtotal = <?= $total ?>;
+        const kuponList = <?= json_encode($kuponList) ?>; // { HEMAT20: 20, HEMAT30: 30, MEMBER25: 25 }
+        const PPN_RATE = 0.12;
+
         hitungTotal();
 
+        function formatIDR(num) {
+            return `IDR ${Math.round(num).toLocaleString('id-ID')}`;
+        }
+
+        function hitungBiayaAdmin(total_harga) {
+            let tarif;
+            if (total_harga <= 15000000) {
+                tarif = 0.005;
+            } else if (total_harga <= 35000000) {
+                tarif = 0.007;
+            } else {
+                tarif = 0.009;
+            }
+            return total_harga * tarif;
+        }
+
+        function hitungDiskonKupon(total_harga, kuponCode) {
+            const code = (kuponCode || '').trim().toUpperCase();
+            if (!code || !(code in kuponList)) {
+                return { persen: 0, nilai: 0 };
+            }
+            const persen = kuponList[code];
+            return { persen: persen, nilai: total_harga * (persen / 100) };
+        }
+
         function hitungTotal() {
-            let total = subtotal + ongkir;
+            const kuponCode = $("#kupon_code").val();
+            const diskon = hitungDiskonKupon(subtotal, kuponCode);
+            const ppn = subtotal * PPN_RATE;
+            const biayaAdmin = hitungBiayaAdmin(subtotal);
+
+            const subtotalAkhir = subtotal - diskon.nilai + ppn + biayaAdmin;
+            const total = subtotalAkhir + ongkir;
 
             $("#ongkir").val(ongkir);
-            $("#total").text(`IDR ${total.toLocaleString('id-ID')}`);
+            $("#kupon_persen").text(diskon.persen > 0 ? `(${diskon.persen}%)` : '');
+            $("#diskon_kupon_text").text(formatIDR(diskon.nilai));
+            $("#ppn_text").text(formatIDR(ppn));
+            $("#biaya_admin_text").text(formatIDR(biayaAdmin));
+            $("#subtotal_akhir_text").text(formatIDR(subtotalAkhir));
+            $("#total").text(formatIDR(total));
             $("#total_harga").val(total);
         }
+
+        $("#kupon_code").on('keyup change', function () {
+            hitungTotal();
+        });
 
         $('#kelurahan').select2({
             placeholder: 'Cari daerah tujuan',
